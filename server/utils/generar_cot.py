@@ -18,7 +18,7 @@ def generar_mensaje_cot(nombre_emisor):
           #obstaculo1="-33.02916, -71.61683"
           #obstaculo2="-33.02722, -71.61555"
           #obstaculo3="-33.02916, -71.61683"
-
+          #aaa
 
 
           #  obstaculo2="-33.0322, -71.615702"
