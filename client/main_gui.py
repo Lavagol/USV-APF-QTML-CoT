@@ -65,10 +65,14 @@ if __name__ == "__main__":
     )
 
     # obstáculos proyectados (escalados) a la vista, y enviados al simulador
-    socket_thread.obstaculosActualizados.connect(simulador.actualizarObstaculos)
-    socket_thread.obstaculosActualizados.connect(
+    #socket_thread.obstaculosActualizados.connect(simulador.actualizarObstaculos)
+    #socket_thread.obstaculosActualizados.connect(
+     # Obstáculos reales (UTM) para el simulador
+    socket_thread.obstaculosActualizados_real.connect(simulador.actualizarObstaculos)
+    socket_thread.obstaculosActualizados_real.connect(
         lambda obs: print(
-            "[VALID GUI] Obstáculos escalados → " +
+            #"[VALID GUI] Obstáculos escalados → " +
+            "[VALID GUI] Obstáculos reales → " +
             "; ".join(f"({x:.2f},{y:.2f})" for x, y in obs)
         )
     )

@@ -1,27 +1,23 @@
-import numpy as np
-from pyproj import Transformer
+from pyproj import Geod
 
-# Coordenadas de ejemplo (lat, lon)
-start = (-33.026181, -71.62689)
-goal  = (-33.031654, -71.620245)
+geod = Geod(ellps="WGS84")
 
-# Transformador WGS84 → UTM 19S
-tr = Transformer.from_crs("EPSG:4326", "EPSG:32719", always_xy=True)
+lon1, lat1 = -71.612689, -33.026181
+lon2, lat2 = -71.620245, -33.031654
 
-# Convertir lat/lon a UTM (x, y)
-x0, y0 = tr.transform(start[1], start[0])
-xm, ym = tr.transform(goal[1],  goal[0])
+azimut_inicial, azimut_final, distancia_m = geod.inv(lon1, lat1, lon2, lat2)
+rumbo_360 = (azimut_inicial + 360) % 360
 
-# 1) Distancia en metros
-distance_m = np.hypot(xm - x0, ym - y0)
+# Conversión de distancia a millas náuticas
+distancia_nm = distancia_m / 1852
 
-# 2) Convertir a millas náuticas
-distance_nm = distance_m / 1852
+# Velocidad en nudos
+velocidad_nudos = 5.0
 
-# 3) Velocidad y tiempo
-speed_kn = 5.0  # nudos
-time_h = distance_nm / speed_kn
-time_min = time_h * 60
+# Tiempo en horas y minutos
+tiempo_horas = distancia_nm / velocidad_nudos
+tiempo_minutos = tiempo_horas * 60
 
-print(f"Distancia: {distance_m:.1f} m ({distance_nm:.3f} NM)")
-print(f"Tiempo estimado a {speed_kn} kn: {time_min:.1f} minutos")
+print(f"Rumbo inicial (CRS): {rumbo_360:.1f}°")
+print(f"Distancia: {distancia_m:.1f} m ({distancia_nm:.3f} MN)")
+print(f"Tiempo estimado a {velocidad_nudos} nudos: {tiempo_minutos:.2f} minutos")

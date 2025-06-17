@@ -13,7 +13,8 @@ class SimuladorAPF(QObject):
         super().__init__(parent)
         self.v_knots       = 5.0
         self.v_max         = self.v_knots * 0.514444  # m/s
-        self._origin_raw   = None    # (x0, y0_invertido)
+        #self._origin_raw   = None    # (x0, y0_invertido)
+        self._origin_raw =None   # (x0, y0) en UTM
         self._start_time   = None
         self._dist_inicial = None
 
@@ -33,11 +34,14 @@ class SimuladorAPF(QObject):
 
     def fijar_origen(self, x0, y0):
         # Invertimos y para que nuestro sistema interno tenga Y+→norte
-        self._origin_raw = (x0, -y0)
+        #self._origin_raw = (x0, -y0)
+        #Almacenar origen UTM tal cual como recibe
+        self._origen_raw=(x0, y0)
         if not self._origen_fijado:
             self.robot_pos       = QPointF(0.0, 0.0)
             self._origen_fijado  = True
-            print(f"🌐 Origen (invertido)={self._origin_raw} → interna (0,0)")
+            #print(f"🌐 Origen (invertido)={self._origin_raw} → interna (0,0)")
+            print(f"🌐 Origen={self._origin_raw} → interna (0,0)")
             self._maybe_start()
 
     def fijar_meta(self, x_meta, y_meta):
@@ -47,7 +51,8 @@ class SimuladorAPF(QObject):
 
         ox, oy = self._origin_raw
         xi     = x_meta - ox
-        yi     = (-y_meta) - oy
+        #yi     = (-y_meta) - oy
+        yi =y_meta - oy
         self.goal_pos = QPointF(xi, yi)
 
         self._start_time   = QDateTime.currentDateTime()
@@ -58,14 +63,19 @@ class SimuladorAPF(QObject):
         self._maybe_start()
 
     def _on_obstaculos_actualizados(self, lista_xy):
-        ox, oy = self._origin_raw
-        self.obstaculos = [
-            QPointF(x - ox, -y - oy)
-            for x, y in lista_xy
-        ]
-        print("🛑 Obstáculos internos →", 
+        #ox, oy = self._origin_raw
+        #self.obstaculos = [
+        #    #QPointF(x - ox, -y - oy)
+        #    QPointF(x,-y)
+        #    for x, y in lista_xy
+        #]
+        #print("🛑 Obstáculos internos →", 
+        #    ", ".join(f"({o.x():.1f},{o.y():.1f})" for o in self.obstaculos))         
+        #print("🛑 Obstáculos internos →",
+        #Lal lista ya viene relativa al origen y sin invertir
+        self.obstaculos = [QPointF(x,y)for x, y in lista_xy]
+        print("🛑 Obstáculos internos →",
               ", ".join(f"({o.x():.1f},{o.y():.1f})" for o in self.obstaculos))
-
     def _maybe_start(self):
         if self._origen_fijado and self.goal_pos and not self.timer.isActive():
             print(f"▶️ Iniciando APF @ {self.v_knots} kn")

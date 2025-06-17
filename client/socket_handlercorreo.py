@@ -14,7 +14,9 @@ class SocketHandler(QThread):
     solicitarCOT = Signal()
     motorEstadoCambiado = Signal(bool)  # True = ON , False = OFF
     #nueva señal para los OBTACULOS
-    obstaculosActualizados=Signal(list)
+    #obstaculosActualizados=Signal(list)
+    obstaculosActualizados       = Signal(list)
+    obstaculosActualizados_real  = Signal(list)
     posicionUSV = Signal(float, float)
     metaActualizada = Signal(float, float)     # lat, lon
     # señales para la simulación en metros reales (sin escala)
@@ -39,6 +41,7 @@ class SocketHandler(QThread):
         self.ultimo_envio = 0  # Timestamp del último envío
         self.intervalo_minimo = 1  # segundos entre comandos (1000ms)
         self.tr_utm = Transformer.from_crs("EPSG:4326", "EPSG:32719", always_xy=True)
+        self._origin_utm=None
 
     def estaConectado(self):
         """Devuelve True si el socket está conectado, de lo contrario False."""
@@ -73,7 +76,10 @@ class SocketHandler(QThread):
             x0_utm, y0_utm = self.tr_utm.transform(lon0,   lat0)
             xm_utm, ym_utm = self.tr_utm.transform(lon_meta, lat_meta)
             # emito al simulador sin escala:
-            self._origin_utm = (x0_utm, y0_utm)
+            #self._origin_utm = (x0_utm, y0_utm)
+            #fijar la referencia UTM solo una vez
+            if self._origin_utm is None:
+                self._origin_utm=(x0_utm, y0_utm)
             self.posicionUSV_real.emit(x0_utm, y0_utm)
             self.metaActualizada_real.emit(xm_utm, ym_utm)
 
@@ -109,6 +115,16 @@ class SocketHandler(QThread):
   
             obs_xy = [geo_to_xy(lo, ln) for lo, ln in obsts]
             self.obstaculosActualizados.emit(obs_xy)
+
+            #Obtáculos en UTM reales(sin escala)
+            obs_real=[
+                (
+                    self.tr_utm.transform(ln, lo)[0] - self._origin_utm[0],
+                    self.tr_utm.transform(ln, lo)[1] - self._origin_utm[1],
+                )
+                for lo, ln in obsts
+            ]
+            self.obstaculosActualizados_real.emit(obs_real)
 
                 #    calculas distancias USV→Meta y USV→cada obstáculo
             def _dist(a, b):
