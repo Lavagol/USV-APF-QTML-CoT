@@ -60,7 +60,9 @@ def calcular_recomendacion(
     # -------------------------------------------------
     if not recomendar:
         direction = (goal - robot) / np.linalg.norm(goal - robot)
-        rumbo     = np.degrees(np.arctan2(direction[1], direction[0])) % 360
+        #rumbo     = np.degrees(np.arctan2(direction[1], direction[0])) % 360
+        rumbo_plano = np.degrees(np.arctan2(direction[1], direction[0])) % 360
+        rumbo = (rumbo_plano + 1.45) % 360
         maniobra  = "avance_alerta" if alerta else "avance_libre"
         return {
             "rumbo"           : round(rumbo, 1),

@@ -52,7 +52,7 @@ class SimuladorAPF(QObject):
         ox, oy = self._origin_raw
         xi     = x_meta - ox
         #yi     = (-y_meta) - oy
-        yi =y_meta - oy
+        yi = y_meta - oy
         self.goal_pos = QPointF(xi, yi)
 
         self._start_time   = QDateTime.currentDateTime()
@@ -100,7 +100,7 @@ class SimuladorAPF(QObject):
             )
             self._guardar_logs()
             return
-
+        # ✉️ Recomendación desde algoritmo APF
         reco = calcular_recomendacion(
             (self.robot_pos.x(), self.robot_pos.y()),
             (self.goal_pos.x(),   self.goal_pos.y()),
@@ -109,10 +109,11 @@ class SimuladorAPF(QObject):
             v_max=self.v_max
         )
 
-        # calculamos rumbo para GUI (0°=este, antihorario)
+        # ✉️ EDITADO: Se agrega corrección de declinación magnética de 1.4
         rumbo_apf  = reco["rumbo"]
         # si tu QML quiere 0°=N y giro horario:
         grados_gui = (90 - rumbo_apf) % 360
+        grados_gui = (90 - rumbo_apf + 1.45) % 360
 
         # movimiento
         ang    = np.radians(rumbo_apf)

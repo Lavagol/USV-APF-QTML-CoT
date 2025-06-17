@@ -2,7 +2,7 @@ import socket
 import time
 import xml.etree.ElementTree as ET
 from PySide6.QtCore import QThread, Signal
-from pyproj import Transformer
+from pyproj import Transformer, Geod
 import numpy as _np
 
 
@@ -22,7 +22,7 @@ class SocketHandler(QThread):
     # señales para la simulación en metros reales (sin escala)
     posicionUSV_real       = Signal(float, float)
     metaActualizada_real   = Signal(float, float)
-
+    rumboGeodesico = Signal(float)
 # ------------------------------------------------------------------
     # Parámetros de proyección y filtrado (añadidos para AEQD y cross-track)
     Escala = 0.2
@@ -42,7 +42,7 @@ class SocketHandler(QThread):
         self.intervalo_minimo = 1  # segundos entre comandos (1000ms)
         self.tr_utm = Transformer.from_crs("EPSG:4326", "EPSG:32719", always_xy=True)
         self._origin_utm=None
-
+        self.geod = Geod(ellps="WGS84") 
     def estaConectado(self):
         """Devuelve True si el socket está conectado, de lo contrario False."""
         return self.conectado and self.socket is not None
@@ -88,6 +88,12 @@ class SocketHandler(QThread):
             d_meta_nm = d_meta_m / 1852.0
             t_min     = (d_meta_nm / 5.0) * 60.0
             print(f"[TEST] Dist real: {d_meta_m:.1f} m → {t_min:.1f} min @5 kn")
+            
+            # Cálculo del rumbo geodésico real con pyproj.Geod
+            rumbo_geo, _, _ = self.geod.inv(lon0, lat0, lon_meta, lat_meta)
+            rumbo_geo = (rumbo_geo + 360) % 360
+            print(f"[GEO] Rumbo geodésico WGS84: {rumbo_geo:.1f}°")
+            self.rumboGeodesico.emit(rumbo_geo)
             # --- 2) Proyección UTM 19S ---
             def geo_to_xy(lat, lon):
                 # primero a UTM

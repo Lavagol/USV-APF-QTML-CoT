@@ -43,9 +43,14 @@ if __name__ == "__main__":
     socket_thread = SocketHandler(host="127.0.0.1", port=65432)
     simulador     = SimuladorAPF()
 
-    # conectar posición y meta reales (UTM) al simulador
+    # ✅ Corrección importante: conexión de origen real (UTM)
     socket_thread.posicionUSV_real.connect(simulador.fijar_origen)
     socket_thread.metaActualizada_real.connect(simulador.fijar_meta)
+
+    # Opcional: imprimir rumbo geodésico si quieres verlo
+    socket_thread.rumboGeodesico.connect(
+        lambda r: print(f"[VALID GEO] Rumbo geodésico WGS84 → {r:.1f}°")
+    )
 
     # debug: mostrar internamente en consola con Y invertida
     simulador.posicionInterna.connect(
@@ -55,8 +60,7 @@ if __name__ == "__main__":
         lambda xm, ym: print(f"[GUI] Meta interna → X={xm:.1f}, Y={ym:.1f}")
     )
 
-    # escalado para visualización en la GUI (no afecta al simulador),
-    # también invierte Y para mostrar “norte arriba”
+    # escalado para visualización en la GUI
     socket_thread.posicionUSV.connect(
         lambda x, y: print(f"[VALID GUI] USV escalado → X={x:.2f}, Y={-y:.2f}")
     )
@@ -64,20 +68,16 @@ if __name__ == "__main__":
         lambda xm, ym: print(f"[VALID GUI] Meta escalada → X={xm:.2f}, Y={-ym:.2f}")
     )
 
-    # obstáculos proyectados (escalados) a la vista, y enviados al simulador
-    #socket_thread.obstaculosActualizados.connect(simulador.actualizarObstaculos)
-    #socket_thread.obstaculosActualizados.connect(
-     # Obstáculos reales (UTM) para el simulador
+    # Obstáculos reales en el plano (sin escala)
     socket_thread.obstaculosActualizados_real.connect(simulador.actualizarObstaculos)
     socket_thread.obstaculosActualizados_real.connect(
         lambda obs: print(
-            #"[VALID GUI] Obstáculos escalados → " +
             "[VALID GUI] Obstáculos reales → " +
             "; ".join(f"({x:.2f},{y:.2f})" for x, y in obs)
         )
     )
 
-    # conectamos alertas del simulador al modelo de estado (QML)
+    # conectar alertas del simulador a QML
     simulador.alertaActualizada.connect(modelo.setEstado)
 
     socket_thread.start()
