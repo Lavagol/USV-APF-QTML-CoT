@@ -9,8 +9,10 @@ def generar_mensaje_cot(nombre_emisor):
 <event version="2.0">
   <detail contact_callsign="{nombre_emisor}"
           obstaculo1="-33.030267, -71.618550"
+          obstaculo2="-33.028871, -71.616492"
+          obstaculo3="-33.028766, -71.616307"
           meta="-33.031654, -71.620245" />
-  <point lat="-33.026181" lon="-71.62689" ce="0.0" hae="13" le="0.0" />
+  <point lat="-33.026181" lon="-71.612689" ce="0.0" hae="13" le="0.0" />
 </event>"""
     return cot_xml
 

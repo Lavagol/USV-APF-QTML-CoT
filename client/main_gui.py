@@ -44,7 +44,7 @@ if __name__ == "__main__":
     simulador     = SimuladorAPF()
 
     # ✅ Corrección importante: conexión de origen real (UTM)
-    socket_thread.posicionUSV_real.connect(simulador.fijar_origen)
+    socket_thread.posicionUSV_real.connect(simulador.fijar_origin)
     socket_thread.metaActualizada_real.connect(simulador.fijar_meta)
 
     # Opcional: imprimir rumbo geodésico si quieres verlo

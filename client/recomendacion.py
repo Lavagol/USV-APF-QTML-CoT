@@ -8,7 +8,7 @@ def calcular_recomendacion(
     # ───────────── Parámetros de fuerzas ─────────────
     k_att = 2.0,          # ganancia atractiva
     k_rep = 300,         # ganancia repulsiva
-    d0    = 6,         # radio de influencia repulsiva
+    d0    = 15,         # radio de influencia repulsiva
     v_max = 0.15,          # velocidad máx. permitida    # ───────────── Parámetros ISS / escape ───────────
     EPS_REL = 0.15,       # fracción de v_max para gatillar ISS
     NU_ESC  = 2.0,        # radio en torno a la meta donde NO se impulsa

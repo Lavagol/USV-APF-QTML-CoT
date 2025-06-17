@@ -5,8 +5,8 @@ import numpy as np
 geod = Geod(ellps="WGS84")
 
 # Coordenadas geográficas
-lon1, lat1 = -71.621932, -33.030181  # Punto A
-lon2, lat2 = -71.575721, -32.929493  # Punto B
+lon1, lat1 = -71.612689, -33.026181  # Punto A
+lon2, lat2 = -71.620245, -33.031654  # Punto B
 
 # Rumbo y distancia reales
 azimut_inicial, azimut_final, distancia_m = geod.inv(lon1, lat1, lon2, lat2)

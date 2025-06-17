@@ -9,8 +9,8 @@ except FileNotFoundError:
     obstaculos = np.empty((0,2))
 
 # normaliza obstaculos a shape (M,2)
-if obstaculos.ndim == 1 and obstaculos.size == 2:
-    obstaculos = obstaculos.reshape(1,2)
+if obstaculos.ndim == 1 and obstaculos.size >= 2 and obstaculos.size % 2 == 0:
+    obstaculos = obstaculos.reshape(-1, 2)
 
 # prepara xs, ys    
 xs = trayectoria[:, 0] * Escala

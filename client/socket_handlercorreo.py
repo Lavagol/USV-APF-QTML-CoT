@@ -98,10 +98,12 @@ class SocketHandler(QThread):
             def geo_to_xy(lat, lon):
                 # primero a UTM
                 x, y = self.tr_utm.transform(lon, lat)
+                ox, oy = self._origin_utm
+                return (x - ox) * self.Escala, (y - oy) * self.Escala
                 # lo pasamos a interno restando el origen
-                xi = (x - self._origin_utm[0]) * self.Escala
-                yi = (y - self._origin_utm[1]) * self.Escala
-                return xi, yi
+                #xi = (x - self._origin_utm[0]) * self.Escala
+                #yi = (y - self._origin_utm[1]) * self.Escala
+                #return xi, yi
 
             # Emitir USV y meta en metros
             x0, y0 = geo_to_xy(lat0, lon0)
@@ -109,17 +111,18 @@ class SocketHandler(QThread):
 
             xm, ym = geo_to_xy(lat_meta, lon_meta)
             self.metaActualizada.emit(xm, ym)
-            
-            obsts = []
+
+            # Obstáculos: igual, restamos origen
+            obs = []
             for k, v in detail.attrib.items():
                 if k.startswith('obstaculo'):
                     try:
                         lo, ln = map(float, v.split(','))
-                        obsts.append((lo, ln))
+                        obs.append((lo, ln))
                     except ValueError:
                         pass
   
-            obs_xy = [geo_to_xy(lo, ln) for lo, ln in obsts]
+            obs_xy = [geo_to_xy(lo, ln) for lo, ln in obs]
             self.obstaculosActualizados.emit(obs_xy)
 
             #Obtáculos en UTM reales(sin escala)
@@ -128,7 +131,7 @@ class SocketHandler(QThread):
                     self.tr_utm.transform(ln, lo)[0] - self._origin_utm[0],
                     self.tr_utm.transform(ln, lo)[1] - self._origin_utm[1],
                 )
-                for lo, ln in obsts
+                for lo, ln in obs
             ]
             self.obstaculosActualizados_real.emit(obs_real)
 

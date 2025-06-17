@@ -22,7 +22,7 @@ class SimuladorAPF(QObject):
         self.goal_pos      = None
         self.obstaculos    = []
         self.hist_pos      = []
-        self._origen_fijado= False
+        self._origin_fijado= False
         self._meta_fijada  = False
 
         self.trayectoria   = []
@@ -32,16 +32,16 @@ class SimuladorAPF(QObject):
         self.timer.timeout.connect(self.avanzar)
         self.actualizarObstaculos.connect(self._on_obstaculos_actualizados)
 
-    def fijar_origen(self, x0, y0):
+    def fijar_origin(self, x0, y0):
         # Invertimos y para que nuestro sistema interno tenga Y+→norte
         #self._origin_raw = (x0, -y0)
         #Almacenar origen UTM tal cual como recibe
-        self._origen_raw=(x0, y0)
-        if not self._origen_fijado:
+        self._origin_raw=(x0, y0)
+        if not self._origin_fijado:
             self.robot_pos       = QPointF(0.0, 0.0)
-            self._origen_fijado  = True
-            #print(f"🌐 Origen (invertido)={self._origin_raw} → interna (0,0)")
-            print(f"🌐 Origen={self._origin_raw} → interna (0,0)")
+            self._origin_fijado  = True
+            #print(f"🌐 Origin (invertido)={self._origin_raw} → interna (0,0)")
+            print(f"🌐 Origin={self._origin_raw} → interna (0,0)")
             self._maybe_start()
 
     def fijar_meta(self, x_meta, y_meta):
@@ -50,9 +50,9 @@ class SimuladorAPF(QObject):
         self._meta_fijada = True
 
         ox, oy = self._origin_raw
-        xi     = x_meta - ox
+        xi     = (x_meta - ox) * 1.0   # la escala ya la aplica geo_to_xy en el handler
         #yi     = (-y_meta) - oy
-        yi = y_meta - oy
+        yi = (y_meta - oy) * 1.0
         self.goal_pos = QPointF(xi, yi)
 
         self._start_time   = QDateTime.currentDateTime()
@@ -73,11 +73,13 @@ class SimuladorAPF(QObject):
         #    ", ".join(f"({o.x():.1f},{o.y():.1f})" for o in self.obstaculos))         
         #print("🛑 Obstáculos internos →",
         #Lal lista ya viene relativa al origen y sin invertir
-        self.obstaculos = [QPointF(x,y)for x, y in lista_xy]
+        #self.obstaculos = [QPointF(x,y)for x, y in lista_xy]
+                # almacenar la lista de obstáculos (coordenadas internas)
+        self.obstaculos = [QPointF(x, y) for x, y in lista_xy]
         print("🛑 Obstáculos internos →",
-              ", ".join(f"({o.x():.1f},{o.y():.1f})" for o in self.obstaculos))
+            ", ".join(f"({o.x():.1f},{o.y():.1f})" for o in self.obstaculos))
     def _maybe_start(self):
-        if self._origen_fijado and self.goal_pos and not self.timer.isActive():
+        if self._origin_fijado and self.goal_pos and not self.timer.isActive():
             print(f"▶️ Iniciando APF @ {self.v_knots} kn")
             self.timer.start(500)
 
