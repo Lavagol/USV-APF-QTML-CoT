@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 from PySide6.QtCore import QThread, Signal
 from pyproj import Transformer, Geod
 import numpy as _np
-
+from client.models.parametros_obstaculos import PARAMS, clasificar_obstaculo
 
 class SocketHandler(QThread):
     mensajeRecibido = Signal(str)
@@ -25,7 +25,7 @@ class SocketHandler(QThread):
     rumboGeodesico = Signal(float)
 # ------------------------------------------------------------------
     # Parámetros de proyección y filtrado (añadidos para AEQD y cross-track)
-    Escala = 0.2
+    Escala=1.0
 
     def __init__(self, host="127.0.0.1", port=65432):  #self, host="10.3.141.201", port=65432
         super().__init__()
@@ -42,6 +42,7 @@ class SocketHandler(QThread):
         self.intervalo_minimo = 1  # segundos entre comandos (1000ms)
         self.tr_utm = Transformer.from_crs("EPSG:4326", "EPSG:32719", always_xy=True)
         self._origin_utm=None
+        #self.Escala=0.2
         self.geod = Geod(ellps="WGS84") 
     def estaConectado(self):
         """Devuelve True si el socket está conectado, de lo contrario False."""
@@ -99,7 +100,7 @@ class SocketHandler(QThread):
                 # primero a UTM
                 x, y = self.tr_utm.transform(lon, lat)
                 ox, oy = self._origin_utm
-                return (x - ox) * self.Escala, (y - oy) * self.Escala
+                return (x - ox), (y - oy) #* self.Escala
                 # lo pasamos a interno restando el origen
                 #xi = (x - self._origin_utm[0]) * self.Escala
                 #yi = (y - self._origin_utm[1]) * self.Escala
@@ -113,27 +114,58 @@ class SocketHandler(QThread):
             self.metaActualizada.emit(xm, ym)
 
             # Obstáculos: igual, restamos origen
-            obs = []
-            for k, v in detail.attrib.items():
-                if k.startswith('obstaculo'):
-                    try:
-                        lo, ln = map(float, v.split(','))
-                        obs.append((lo, ln))
-                    except ValueError:
-                        pass
+            #obs = []
+            #for k, v in detail.attrib.items():
+            #    if k.startswith('obstaculo'):
+            #        try:
+            #           lo, ln = map(float, v.split(','))
+            #           obs.append((lo, ln))
+            #        except ValueError:
+            #           pass
+
+
   
-            obs_xy = [geo_to_xy(lo, ln) for lo, ln in obs]
-            self.obstaculosActualizados.emit(obs_xy)
+            #obs_xy = [geo_to_xy(lo, ln) for lo, ln in obs]
+            #self.obstaculosActualizados.emit(obs_xy)
+
+            # ——— Obstáculos + clasificación ———
+            # esperamos que el XML envíe también algo como tipo_obstaculo1="Piedra", tipo_obstaculo2="Barco",….
+            obst_raw = []
+            for clave, valor in detail.attrib.items():
+                # buscamos claves 'obstaculoN'
+                if clave.startswith('obstaculo') and not clave.startswith('tipo_'):
+                    idx = clave.replace('obstaculo','')                     # e.g. '1'
+                    lat_o, lon_o = map(float, valor.split(','))
+                # leemos su tipo bruto (o cadena vacía si no viene)
+                    tipo_bruto = detail.attrib.get(f'tipo_obstaculo{idx}', '')
+                # normalizamos con tu función de clasificación
+                    tipo = clasificar_obstaculo(tipo_bruto)
+                    obst_raw.append((lat_o, lon_o, tipo))
+
+        # proyectamos y emitimos con (x, y, tipo)
+            obs_xy_tipo = [
+                (*geo_to_xy(lat_o, lon_o), tipo)
+                for lat_o, lon_o, tipo in obst_raw
+            ]
+            self.obstaculosActualizados.emit(obs_xy_tipo)            
+
 
             #Obtáculos en UTM reales(sin escala)
-            obs_real=[
-                (
-                    self.tr_utm.transform(ln, lo)[0] - self._origin_utm[0],
-                    self.tr_utm.transform(ln, lo)[1] - self._origin_utm[1],
-                )
-                for lo, ln in obs
-            ]
-            self.obstaculosActualizados_real.emit(obs_real)
+            #obs_real=[
+             #   (
+             #       self.tr_utm.transform(ln, lo)[0] - self._origin_utm[0],
+             #       self.tr_utm.transform(ln, lo)[1] - self._origin_utm[1],
+             #   )
+             #   for lo, ln in obs
+            #]
+            obs_real_tipo = []
+            for lat_o, lon_o, tipo in obst_raw:
+                ux, uy = self.tr_utm.transform(lon_o, lat_o)
+                obs_real_tipo.append((ux - self._origin_utm[0],
+                                    uy - self._origin_utm[1],
+                                    tipo))
+
+            self.obstaculosActualizados_real.emit(obs_real_tipo)
 
                 #    calculas distancias USV→Meta y USV→cada obstáculo
             def _dist(a, b):
@@ -144,8 +176,8 @@ class SocketHandler(QThread):
             print(f"[VALID] Dist USV→Meta: {d_meta:.1f} m")
 
                 # distancias USV→Obstáculo
-            for i, o in enumerate(obs_xy, start=1):
-                d_o = _dist((x0, y0), o)
+            for i, (x_o, y_o, _) in enumerate(obs_xy_tipo, start=1):
+                d_o = _dist((x0, y0), (x_o, y_o))
                 print(f"[VALID] Dist USV→Obs{i}: {d_o:.1f} m")
           
             # --- 3) Estado del motor ---

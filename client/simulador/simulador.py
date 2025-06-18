@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, QTimer, Signal, QPointF, QDateTime
 import numpy as np
-from recomendacion import calcular_recomendacion
+from client.APF.recomendacion import calcular_recomendacion
 import csv  # exportación del log
 
 class SimuladorAPF(QObject):
@@ -62,7 +62,7 @@ class SimuladorAPF(QObject):
         self.metaInterna.emit(xi, yi)
         self._maybe_start()
 
-    def _on_obstaculos_actualizados(self, lista_xy):
+    def _on_obstaculos_actualizados(self, lista_xy_tipo):
         #ox, oy = self._origin_raw
         #self.obstaculos = [
         #    #QPointF(x - ox, -y - oy)
@@ -75,9 +75,25 @@ class SimuladorAPF(QObject):
         #Lal lista ya viene relativa al origen y sin invertir
         #self.obstaculos = [QPointF(x,y)for x, y in lista_xy]
                 # almacenar la lista de obstáculos (coordenadas internas)
-        self.obstaculos = [QPointF(x, y) for x, y in lista_xy]
-        print("🛑 Obstáculos internos →",
-            ", ".join(f"({o.x():.1f},{o.y():.1f})" for o in self.obstaculos))
+        #self.obstaculos = [QPointF(x, y) for x, y in lista_xy]
+        #print("🛑 Obstáculos internos →",
+        #    ", ".join(f"({o.x():.1f},{o.y():.1f})" for o in self.obstaculos))
+            # lista_xy_tipo es [(x, y, tipo), …]
+        """
+        lista_xy_tipo viene de SocketHandler.obstaculosActualizados.emit(obs_xy_tipo)
+        como una lista de tuplas (x_internal, y_internal, tipo_str)
+        """
+        # Guardamos tanto la posición como el tipo en self.obstaculos
+        # de modo que luego podamos pasar ambos al APF o colorearlos en la GUI
+        self.obstaculos = [
+            (QPointF(x, y), tipo)
+            for x, y, tipo in lista_xy_tipo
+        ]
+
+        # Para depurar, imprimimos cada obstáculo:
+        for pt, tipo in self.obstaculos:
+            print(f"🛑 Obstáculo de tipo '{tipo}' en interna → "
+                f"({pt.x():.1f},{pt.y():.1f})")
     def _maybe_start(self):
         if self._origin_fijado and self.goal_pos and not self.timer.isActive():
             print(f"▶️ Iniciando APF @ {self.v_knots} kn")
@@ -85,7 +101,6 @@ class SimuladorAPF(QObject):
 
     def avanzar(self):
         dt = self.timer.interval() / 1000.0
-
         dx   = self.goal_pos.x()  - self.robot_pos.x()
         dy   = self.goal_pos.y()  - self.robot_pos.y()
         dist = np.hypot(dx, dy)
@@ -106,7 +121,8 @@ class SimuladorAPF(QObject):
         reco = calcular_recomendacion(
             (self.robot_pos.x(), self.robot_pos.y()),
             (self.goal_pos.x(),   self.goal_pos.y()),
-            [(o.x(), o.y()) for o in self.obstaculos],
+            #[(pt.x(), pt.y()) for pt, tipo in self.obstaculos],
+            [(pt.x(), pt.y(), tipo) for pt, tipo in self.obstaculos], #(x, y, tipo)
             historial=self.hist_pos,
             v_max=self.v_max
         )
@@ -140,10 +156,29 @@ class SimuladorAPF(QObject):
         self.alertaActualizada.emit(msg)
 
     def _guardar_logs(self):
+        # 1) Guardar la trayectoria
         np.save("trayectoria.npy", np.array(self.trayectoria))
-        np.save("obstaculos.npy", np.array([[o.x(),o.y()] for o in self.obstaculos]))
+
+        # 2) Extraer sólo las coordenadas de cada obstáculo
+        #obst_coords = []
+        #for entry in self.obstaculos:
+            # si entry viene como (QPointF, tipo)
+        #    if isinstance(entry, tuple):
+        #        pt, _ = entry
+        #    else:
+        #        pt = entry
+        #    obst_coords.append([pt.x(), pt.y()])
+        # 2) Extraer coordenadas y tipo de cada obstáculo
+        obst_data = []
+        for pt, tipo in self.obstaculos:
+            obst_data.append([pt.x(), pt.y(), tipo])
+        # 3) Guardar array de shape (N,2)
+        np.save("obstaculos.npy",
+        np.array(obst_data, dtype=object))
+
+        # 4) Guardar el log CSV si existe
         if self.log:
-            with open("log_usv.csv","w",newline="") as f:
+            with open("log_usv.csv", "w", newline="") as f:
                 w = csv.DictWriter(f, fieldnames=self.log[0].keys())
                 w.writeheader()
                 w.writerows(self.log)

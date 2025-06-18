@@ -1,7 +1,7 @@
 import sys          #para el loop
 from PySide6.QtCore import QCoreApplication  #para el loop
-from socket_handlercorreo import SocketHandler
-from simulador import SimuladorAPF   # tu script con la clase SimuladorAPF
+from client.handlers.socket_handlercorreo import SocketHandler
+from client.simulador.simulador import SimuladorAPF   # tu script con la clase SimuladorAPF
 
 app = QCoreApplication(sys.argv)   #enciende el bucle de eventos
 

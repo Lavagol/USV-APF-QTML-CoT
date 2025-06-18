@@ -1,4 +1,8 @@
 import numpy as np
+# Al inicio de recomendacion.py
+from ..models.parametros_obstaculos import PARAMS
+
+
 
 def calcular_recomendacion(
     pos_usv,
@@ -7,9 +11,9 @@ def calcular_recomendacion(
     *,
     # ───────────── Parámetros de fuerzas ─────────────
     k_att = 2.0,          # ganancia atractiva
-    k_rep = 300,         # ganancia repulsiva
+    k_rep = 500,         # ganancia repulsiva
     d0    = 15,         # radio de influencia repulsiva
-    v_max = 0.15,          # velocidad máx. permitida    # ───────────── Parámetros ISS / escape ───────────
+    v_max = 2.5,          # velocidad máx. permitida    # ───────────── Parámetros ISS / escape ───────────
     EPS_REL = 0.15,       # fracción de v_max para gatillar ISS
     NU_ESC  = 2.0,        # radio en torno a la meta donde NO se impulsa
     K_IMP   = 1.0,        # magnitud del impulso: K_IMP · v_max
@@ -33,9 +37,11 @@ def calcular_recomendacion(
     # -------------------------------------------------
     alerta, recomendar   = None, False
     distancia_minima     = float("inf")
-
-    for obs in obstaculos:
-        obs_arr = np.array(obs, dtype=float)
+    # desempaquetamos (x, y, tipo). Si no vas a usar el tipo aquí,
+    # puedes capturarlo en “_” para indicar “lo ignoro”.
+    for x_obs, y_obs, _ in obstaculos:
+        #obs_arr = np.array(obs, dtype=float)
+        obs_arr = np.array((x_obs, y_obs), dtype=float)
         dist    = np.linalg.norm(robot - obs_arr)
         distancia_minima = min(distancia_minima, dist)
 
@@ -79,15 +85,35 @@ def calcular_recomendacion(
     # 3) PLANIFICADOR LOCAL (APF)
     # -------------------------------------------------
     # 3-a) Calcular fuerzas
-    force_att = k_att * (goal - robot)            # fuerza atractiva
-    force_rep = np.zeros(2)
-    for obs in obstaculos:
-        vec  = robot - np.array(obs, dtype=float)
-        dist = np.linalg.norm(vec)
-        if dist <= d0:                            # dentro de radio repulsivo
-            dist = max(dist, 1e-3)                # evita división /0
-            rep  = k_rep * ((1/dist) - (1/d0)) / (dist**2)
-            force_rep += rep * (vec / dist)       # dirección + magnitud
+    force_att = k_att * (goal - robot)            # fuerza atractiva 𝐅_atractiva = k_att · (objetivo − posición)
+    force_rep = np.zeros(2)                        # inicializamos vector repulsivo
+    #for obs in obstaculos:
+    #    vec  = robot - np.array(obs, dtype=float)
+    #    dist = np.linalg.norm(vec)
+    #    if dist <= d0:                            # dentro de radio repulsivo
+    #        dist = max(dist, 1e-3)                # evita división /0
+    #        rep  = k_rep * ((1/dist) - (1/d0)) / (dist**2)
+    #        force_rep += rep * (vec / dist)       # dirección + magnitud
+    for x_obs, y_obs, tipo in obstaculos:
+        # 1) vector USV → obstáculo
+        vec  = robot - np.array((x_obs, y_obs), dtype=float)
+        dist = np.linalg.norm(vec)          # distancia actual
+
+        # 2) sacamos de PARAMS la influencia según el tipo:
+        #    • rho0: radio a partir del cual REPULSION=0
+        #    • eta : ganancia repulsiva
+        params = PARAMS.get(tipo, {})
+        d0_i   = params.get('radio', d0)     # si no está, usamos el d0 global
+        krep_i = params.get('repulsion',  k_rep)  # idem para k_rep
+
+        # 3) si estamos dentro de ese radio de influencia...
+        if dist <= d0_i:
+            dist = max(dist, 1e-3)           # evitamos división por cero
+            # fórmula clásica de APF repulsiva:
+            #   rep = η · (1/dist − 1/d0) / dist²
+            rep  = krep_i * ((1/dist) - (1/d0_i)) / (dist**2)
+            # 4) sumamos componente repulsiva normalizada
+            force_rep += rep * (vec / dist)
 
     force_total = force_att + force_rep           # ∇U completo
     norm_F      = np.linalg.norm(force_total)
