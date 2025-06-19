@@ -1,8 +1,8 @@
 PARAMS = {
-    'piedra':  { 'repulsion': 5.0,  'radio': 10.0 },
-    'barco':   { 'repulsion': 8.0,  'radio': 30.0 },
-    'boya':    { 'repulsion': 3.0,  'radio': 5.0  },
-    'default': { 'repulsion': 4.0,  'radio': 15.0 },
+    'piedra':  { 'repulsion': 500,  'radio': 10.0 },
+    'barco':   { 'repulsion': 800,  'radio': 30.0 },
+    'boya':    { 'repulsion': 250,  'radio': 5.0  },
+    'default': { 'repulsion': 400,  'radio': 15.0 },
 }
 
 def clasificar_obstaculo(raw_tag: str) -> str:

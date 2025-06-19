@@ -20,8 +20,8 @@ def calcular_recomendacion(
     umbral_escape_lateral = None,  # ← se fija internamente al 10 % de v_max
     # ───────────── Otros ajustes ─────────────────────
     historial           = None,    # lista de últimas posiciones
-    radio_alerta        = 30,      # solo avisa
-    radio_recomendacion = 15       # activa planificador local
+    radio_alerta        = 80,      # solo avisa
+    radio_recomendacion = 60       # activa planificador local
 ):
     # -------------------------------------------------
     # 0) Ajuste dinámico de parámetros dependientes
