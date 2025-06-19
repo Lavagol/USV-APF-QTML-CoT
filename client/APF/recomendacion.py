@@ -105,7 +105,8 @@ def calcular_recomendacion(
         params = PARAMS.get(tipo, {})
         d0_i   = params.get('radio', d0)     # si no está, usamos el d0 global
         krep_i = params.get('repulsion',  k_rep)  # idem para k_rep
-
+        print(f"[DEBUG] tipo={tipo:<7} dist={dist:6.1f}  d0_i={d0_i:5.1f}  "
+          f"krep_i={krep_i:4}  dentro? {dist <= d0_i}")
         # 3) si estamos dentro de ese radio de influencia...
         if dist <= d0_i:
             dist = max(dist, 1e-3)           # evitamos división por cero
