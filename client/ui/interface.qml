@@ -75,7 +75,7 @@ ApplicationWindow {
 
     Rectangle {
         anchors.fill: parent
-        color: "transparent"
+        color: "black"
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top

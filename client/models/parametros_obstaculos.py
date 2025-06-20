@@ -1,9 +1,9 @@
 Escala=10
 PARAMS = {
-    'piedra':  { 'repulsion': 500*Escala**2,  'radio': 10.0 *Escala },# 100 m
-    'barco':   { 'repulsion': 800*Escala**2,  'radio': 30.0*Escala },# 300 m
-    'boya':    { 'repulsion': 250*Escala**2,  'radio': 5.0  *Escala},# 50 m
-    'default': { 'repulsion': 400*Escala**2,  'radio': 15.0 *Escala},
+    'piedra':  { 'repulsion': 500*Escala**3,  'radio': 10.0 *Escala },# 100 m
+    'barco':   { 'repulsion': 800*Escala**3,  'radio': 30.0*Escala },# 300 m
+    'boya':    { 'repulsion': 250*Escala**3,  'radio': 5.0  *Escala},# 50 m
+    'default': { 'repulsion': 400*Escala**3,  'radio': 15.0 *Escala},
 }
 
 def clasificar_obstaculo(raw_tag: str) -> str:

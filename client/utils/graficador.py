@@ -7,13 +7,13 @@ Escala = 0.2
 # ————— CARGO TRAYECTORIA —————
 tray = np.load("trayectoria.npy", allow_pickle=True)
 xs = tray[:,0] * Escala
-ys = -tray[:,1] * Escala
+ys = tray[:,1] * Escala
 
 # ————— CARGO OBSTÁCULOS (x, y, tipo) —————
 obs = np.load("obstaculos.npy", allow_pickle=True)
 if obs.ndim == 2 and obs.shape[1] == 3:
     ox = obs[:,0].astype(float) * Escala
-    oy = -obs[:,1].astype(float) * Escala
+    oy = obs[:,1].astype(float) * Escala
     ot = obs[:,2]  # tipos como array de strings
 else:
     # sin tipos, los tratamos como "desconocido"
@@ -27,6 +27,7 @@ estilos = {
     'barco'     : dict(marker='s', s=150, facecolor='skyblue',   edgecolor='black'),
     'boya'      : dict(marker='^', s=150, facecolor='orange',    edgecolor='black'),
     'desconocido': dict(marker='o', s=150, facecolor='none',      edgecolor='black'),
+    #costa o accidente geográfico
 }
 
 # ————— PLOTEO —————
