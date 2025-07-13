@@ -1,22 +1,24 @@
-import socket
+import socket #Bibliotecas: red, tiempo, XML, expresiones regulares.
 import time
 import xml.etree.ElementTree as ET
 import re
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal #Hereda de QThread para no bloquear la GUI.
 
+#Objetivo de este script:
+#Levantar un socket TCP, esperar un cliente, saludar con “CR”, luego atender solicitudes “GET_COT” enviando el XML con posición (GPS) y obstáculos que genera generar_cot.py.
 
 class SocketHandler(QThread):
-    mensajeRecibido = pyqtSignal(str)
+    mensajeRecibido = pyqtSignal(str) #XML crudo
     conexionCaida = pyqtSignal()
-    coordenadasRecibidas = pyqtSignal(str, str, str, str, str, str, str, str, str)
+    coordenadasRecibidas = pyqtSignal(str, str, str, str, str, str, str, str, str) #campos parseados
     conexionExitosa = pyqtSignal()
     solicitarCOT = pyqtSignal()
 
     # NUEVA SEÑAL PARA EL ESTADO DEL MOTOR
-    motorEstadoCambiado = pyqtSignal(bool)  # True = ON , False = OFF
+    motorEstadoCambiado = pyqtSignal(bool)  # True = ON , False = OFF encendido” vs “apagado
 
-    def __init__(self, host="127.0.0.1", port=65432): #self, host="10.3.141.201", port=65432
+    def __init__(self, host="127.0.0.1", port=65432): #self, host="10.3.141.201", port=65432. Guarda flags e intervalo mínimo entre comandos.
         super().__init__()
         self.host = host
         self.port = port
@@ -34,7 +36,7 @@ class SocketHandler(QThread):
         """Devuelve True si el socket está conectado, de lo contrario False."""
         return self.conectado and self.socket is not None
 
-    def procesarMensaje(self, response):
+    def procesarMensaje(self, response): #Núcleo del parser – desarma el XML recibido. response se guarda en self.ultimo_mensaje.
         """Procesar el mensaje recibido desde el servidor"""
         print(f"Respuesta del servidor: {response}")
         self.ultimo_mensaje = response  # 1) guardar
@@ -52,7 +54,7 @@ class SocketHandler(QThread):
         self.mensajeRecibido.emit(response)  # 3) señal cruda
 
         try:
-            root = ET.fromstring(response)
+            root = ET.fromstring(response) #Analiza XML. Obtiene nodos <point> y <detail>.
             point = root.find("point")
             detail = root.find("detail")
 
@@ -122,7 +124,7 @@ class SocketHandler(QThread):
         """Devuelve el último mensaje recibido"""
         return self.ultimo_mensaje
 
-    def run(self):
+    def run(self): #bucle principal
         print("Ejecutando hilo del socket.")
 
         while self.is_running:

@@ -2,7 +2,7 @@ import socket
 import time
 import xml.etree.ElementTree as ET
 from PySide6.QtCore import QThread, Signal
-from pyproj import Transformer, Geod
+from pyproj import Transformer, Geod # (WGS 84 → UTM 19 S) (rumbo geodésico).
 import numpy as _np
 from client.models.parametros_obstaculos import PARAMS, clasificar_obstaculo
 
@@ -15,19 +15,19 @@ class SocketHandler(QThread):
     motorEstadoCambiado = Signal(bool)  # True = ON , False = OFF
     #nueva señal para los OBTACULOS
     #obstaculosActualizados=Signal(list)
-    obstaculosActualizados       = Signal(list)
+    obstaculosActualizados       = Signal(list) #x,y,tipo) y _real (UTM)
     obstaculosActualizados_real  = Signal(list)
     posicionUSV = Signal(float, float)
     metaActualizada = Signal(float, float)     # lat, lon
     # señales para la simulación en metros reales (sin escala)
-    posicionUSV_real       = Signal(float, float)
-    metaActualizada_real   = Signal(float, float)
+    posicionUSV_real       = Signal(float, float) # UTM reales en m
+    metaActualizada_real   = Signal(float, float) #análogas.
     rumboGeodesico = Signal(float)
 # ------------------------------------------------------------------
     # Parámetros de proyección y filtrado (añadidos para AEQD y cross-track)
     Escala=1.0
 
-    def __init__(self, host="127.0.0.1", port=65432):  #self, host="10.3.141.201", port=65432
+    def __init__(self, host="127.0.0.1", port=65432):  #self, host="10.3.141.201", port=65432, Crea socket
         super().__init__()
         self.host = host
         self.port = port
@@ -40,15 +40,15 @@ class SocketHandler(QThread):
         self.connected_since = None  # <--- Nuevo atributo
         self.ultimo_envio = 0  # Timestamp del último envío
         self.intervalo_minimo = 1  # segundos entre comandos (1000ms)
-        self.tr_utm = Transformer.from_crs("EPSG:4326", "EPSG:32719", always_xy=True)
-        self._origin_utm=None
+        self.tr_utm = Transformer.from_crs("EPSG:4326", "EPSG:32719", always_xy=True) #proyección fija
+        self._origin_utm=None #se fijará al primer punto recibido
         #self.Escala=0.2
         self.geod = Geod(ellps="WGS84") 
     def estaConectado(self):
         """Devuelve True si el socket está conectado, de lo contrario False."""
         return self.conectado and self.socket is not None
 
-    def procesarMensaje(self, response: str):
+    def procesarMensaje(self, response: str): # núcleo de conversión
         """Procesar el mensaje recibido desde el servidor"""
         print(f"Respuesta del servidor: {response}")
         self.ultimo_mensaje = response
@@ -61,7 +61,7 @@ class SocketHandler(QThread):
 
         self.mensajeRecibido.emit(response)
 
-        try:
+        try: #Extrae lat/lon
             root = ET.fromstring(response)
             point = root.find("point")
             detail = root.find("detail")
@@ -96,17 +96,17 @@ class SocketHandler(QThread):
             print(f"[GEO] Rumbo geodésico WGS84: {rumbo_geo:.1f}°")
             self.rumboGeodesico.emit(rumbo_geo)
             # --- 2) Proyección UTM 19S ---
-            def geo_to_xy(lat, lon):
+            def geo_to_xy(lat, lon): # Convierte lat/lon → UTM
                 # primero a UTM
                 x, y = self.tr_utm.transform(lon, lat)
                 ox, oy = self._origin_utm
-                return (x - ox), (y - oy) #* self.Escala
+                return (x - ox), (y - oy) #* self.Escala Resta el origen UTM
                 # lo pasamos a interno restando el origen
                 #xi = (x - self._origin_utm[0]) * self.Escala
                 #yi = (y - self._origin_utm[1]) * self.Escala
                 #return xi, yi
 
-            # Emitir USV y meta en metros
+            # Emitir USV y meta en metros   #Emite posicionUSV(x,y) y metaActualizada(x,y) para la simulación en plano XY.
             x0, y0 = geo_to_xy(lat0, lon0)
             self.posicionUSV.emit(x0, y0)
 
@@ -158,7 +158,7 @@ class SocketHandler(QThread):
              #   )
              #   for lo, ln in obs
             #]
-            obs_real_tipo = []
+            obs_real_tipo = [] #	Emite obstaculosActualizados (x,y,tipo) y obstaculosActualizados_real (UTM, tipo).
             for lat_o, lon_o, tipo in obst_raw:
                 ux, uy = self.tr_utm.transform(lon_o, lat_o)
                 obs_real_tipo.append((ux - self._origin_utm[0],
@@ -167,7 +167,7 @@ class SocketHandler(QThread):
 
             self.obstaculosActualizados_real.emit(obs_real_tipo)
 
-                #    calculas distancias USV→Meta y USV→cada obstáculo
+                #    calculas distancias USV→Meta y USV→cada obstáculo Debug: distancias USV→Meta y USV→Obs-i en metros.	
             def _dist(a, b):
                 return _np.hypot(a[0]-b[0], a[1]-b[1])
     

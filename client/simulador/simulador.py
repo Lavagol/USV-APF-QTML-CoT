@@ -2,6 +2,8 @@ from PySide6.QtCore import QObject, QTimer, Signal, QPointF, QDateTime
 import numpy as np
 from client.APF.recomendacion import calcular_recomendacion
 import csv  # exportación del log
+import json
+from pyproj import Transformer
 
 class SimuladorAPF(QObject):
     alertaActualizada    = Signal(str)
@@ -158,8 +160,22 @@ class SimuladorAPF(QObject):
     def _guardar_logs(self):
         # 1) Guardar la trayectoria
         np.save("trayectoria.npy", np.array(self.trayectoria))
+        if self._origin_raw is not None:
+            transformer = Transformer.from_crs("EPSG:32719", "EPSG:4326", always_xy=True)
 
-        # 2) Extraer sólo las coordenadas de cada obstáculo
+            tray_json = []
+            for x, y in self.trayectoria:
+                x_utm = x + self._origin_raw[0]
+                y_utm = y + self._origin_raw[1]
+                lon, lat = transformer.transform(x_utm, y_utm)
+                tray_json.append({"lat": lat, "lon": lon})
+
+            with open("trayectoria_gps.json", "w", encoding="utf-8") as f:
+                json.dump(tray_json, f, indent=2, ensure_ascii=False)
+
+            print("[✔] Exportado → trayectoria_gps.json")
+        else:
+            print("[⚠] No se pudo exportar trayectoria GPS: origen UTM no fijado.")
         #obst_coords = []
         #for entry in self.obstaculos:
             # si entry viene como (QPointF, tipo)
@@ -173,8 +189,31 @@ class SimuladorAPF(QObject):
         for pt, tipo in self.obstaculos:
             obst_data.append([pt.x(), pt.y(), tipo])
         # 3) Guardar array de shape (N,2)
-        np.save("obstaculos.npy",
+        np.save("obstaculos.npy", 
         np.array(obst_data, dtype=object))
+        
+        # --- NUEVO: Exportar obstáculos a coordenadas GPS ---
+        if self._origin_raw is not None:
+            transformer = Transformer.from_crs("EPSG:32719", "EPSG:4326", always_xy=True)
+
+            obst_json = []
+            for pt, tipo in self.obstaculos:
+                x_utm = pt.x() + self._origin_raw[0]
+                y_utm = pt.y() + self._origin_raw[1]
+                lon, lat = transformer.transform(x_utm, y_utm)
+                obst_json.append({
+                    "lat": lat,
+                    "lon": lon,
+                    "tipo": tipo
+                })
+
+            with open("obstaculos_gps.json", "w", encoding="utf-8") as f:
+                json.dump(obst_json, f, indent=2, ensure_ascii=False)
+
+            print("[✔] Exportado → obstaculos_gps.json")
+        else:
+            print("[⚠] No se pudo exportar obstáculos: origen UTM no fijado.")
+
 
         # 4) Guardar el log CSV si existe
         if self.log:

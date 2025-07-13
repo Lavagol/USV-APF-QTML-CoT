@@ -1,6 +1,8 @@
 import numpy as np
 # Al inicio de recomendacion.py
-from ..models.parametros_obstaculos import PARAMS
+from ..models.parametros_obstaculos import PARAMS #allí están repulsion y radio por tipo (piedra, barco, boya).
+
+
 
 
 
@@ -10,9 +12,10 @@ def calcular_recomendacion(
     obstaculos,
     *,
     # ───────────── Parámetros de fuerzas ─────────────
+    Escala_sim= 10,
     k_att = 2.0,          # ganancia atractiva
-    k_rep = 500,         # ganancia repulsiva
-    d0    = 15,         # radio de influencia repulsiva
+    k_rep_base = 500,         # ganancia repulsiva
+    d0_base    = 30,         # radio de influencia repulsiva
     v_max = 2.5,          # velocidad máx. permitida    # ───────────── Parámetros ISS / escape ───────────
     EPS_REL = 0.15,       # fracción de v_max para gatillar ISS
     NU_ESC  = 2.0,        # radio en torno a la meta donde NO se impulsa
@@ -20,9 +23,12 @@ def calcular_recomendacion(
     umbral_escape_lateral = None,  # ← se fija internamente al 10 % de v_max
     # ───────────── Otros ajustes ─────────────────────
     historial           = None,    # lista de últimas posiciones
-    radio_alerta        = 80,      # solo avisa
-    radio_recomendacion = 60       # activa planificador local
+    radio_alerta        = 150,      # solo avisa
+    radio_recomendacion = 100       # activa planificador local
 ):
+    
+    k_rep = k_rep_base * Escala_sim**3   # ← ahora se calcula en cada llamada
+    d0    = d0_base    * Escala_sim
     # -------------------------------------------------
     # 0) Ajuste dinámico de parámetros dependientes
     # -------------------------------------------------
