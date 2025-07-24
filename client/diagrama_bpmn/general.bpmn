@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Defs_USV_APF"
+                  targetNamespace="http://example.com/bpmn">
+
+  <!-- ================================================================ -->
+  <!--                         PROCESO  SERVIDOR                        -->
+  <!-- ================================================================ -->
+  <bpmn:process id="Servidor_USV" name="Servidor – Publicar eventos CoT" isExecutable="false">
+
+    <bpmn:startEvent id="Srv_Start" name="Iniciar servidor"/>
+    <bpmn:task       id="Srv_StartServer" name="start_server() – Escuchar TCP"/>
+    <bpmn:subProcess id="Srv_Thread" name="handle_client() – Hilo por cliente">
+      <bpmn:startEvent        id="Thr_Start"/>
+      <bpmn:task              id="Thr_SendCR"  name="Enviar CR + primer COT"/>
+      <bpmn:exclusiveGateway  id="Thr_XOR"     name="¿Comando?"/>
+      <bpmn:task              id="Thr_GetCOT"  name="Responder GET_COT"/>
+      <bpmn:task              id="Thr_Engine"  name="Responder ENGINE…"/>
+      <bpmn:endEvent          id="Thr_End"/>
+
+      <bpmn:sequenceFlow id="ts1" sourceRef="Thr_Start"   targetRef="Thr_SendCR"/>
+      <bpmn:sequenceFlow id="ts2" sourceRef="Thr_SendCR" targetRef="Thr_XOR"/>
+      <bpmn:sequenceFlow id="ts3" sourceRef="Thr_XOR"    targetRef="Thr_GetCOT"  isDefault="true"/>
+      <bpmn:sequenceFlow id="ts4" sourceRef="Thr_XOR"    targetRef="Thr_Engine"/>
+      <bpmn:sequenceFlow id="ts5" sourceRef="Thr_GetCOT" targetRef="Thr_XOR"/>
+      <bpmn:sequenceFlow id="ts6" sourceRef="Thr_Engine" targetRef="Thr_XOR"/>
+    </bpmn:subProcess>
+    <bpmn:endEvent id="Srv_End" name="Servidor cerrado"/>
+
+    <bpmn:sequenceFlow id="sf1" sourceRef="Srv_Start"       targetRef="Srv_StartServer"/>
+    <bpmn:sequenceFlow id="sf2" sourceRef="Srv_StartServer" targetRef="Srv_Thread"/>
+    <bpmn:sequenceFlow id="sf3" sourceRef="Srv_Thread"      targetRef="Srv_End"/>
+
+  </bpmn:process>
+
+  <!-- ================================================================ -->
+  <!--                         PROCESO  CLIENTE                         -->
+  <!-- ================================================================ -->
+  <bpmn:process id="Cliente_USV" name="Cliente – Navegación autónoma" isExecutable="false">
+
+    <bpmn:startEvent id="Cli_Start" name="Socket conectado"/>
+    <bpmn:subProcess id="Sub_GPS"  name="GPS → UTM → XY (sub)"/>
+    <bpmn:subProcess id="Sub_APF"  name="APF – Evasión (sub)"/>
+    <bpmn:subProcess id="Sub_Sim"  name="Simulador &amp; Graficador (sub)"/>
+    <bpmn:task       id="Gui_Task" name="interface.qml – Panel de navegación"/>
+    <bpmn:endEvent   id="Cli_End"  name="Fin de simulación"/>
+
+    <bpmn:sequenceFlow id="cf1" sourceRef="Cli_Start" targetRef="Sub_GPS"/>
+    <bpmn:sequenceFlow id="cf2" sourceRef="Sub_GPS"   targetRef="Sub_APF"/>
+    <bpmn:sequenceFlow id="cf3" sourceRef="Sub_APF"   targetRef="Sub_Sim"/>
+    <bpmn:sequenceFlow id="cf4" sourceRef="Sub_Sim"   targetRef="Gui_Task"/>
+    <bpmn:sequenceFlow id="cf5" sourceRef="Gui_Task"  targetRef="Cli_End"/>
+
+  </bpmn:process>
+
+  <!-- ================================================================ -->
+  <!--                         DIAGRAMA  SRV                            -->
+  <!-- ================================================================ -->
+  <bpmndi:BPMNDiagram id="Diag_Servidor">
+    <bpmndi:BPMNPlane id="Plane_SRV" bpmnElement="Servidor_USV">
+      <bpmndi:BPMNShape id="s_srv_start" bpmnElement="Srv_Start">
+        <dc:Bounds x="60"  y="80" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s_srv_task"  bpmnElement="Srv_StartServer">
+        <dc:Bounds x="120" y="60" width="170" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s_srv_sub"   bpmnElement="Srv_Thread">
+        <dc:Bounds x="320" y="40" width="220" height="100"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="s_srv_end"   bpmnElement="Srv_End">
+        <dc:Bounds x="570" y="80" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+  <!-- ================================================================ -->
+  <!--                         DIAGRAMA  CLIENTE                        -->
+  <!-- ================================================================ -->
+  <bpmndi:BPMNDiagram id="Diag_Cliente">
+    <bpmndi:BPMNPlane id="Plane_CLIENT" bpmnElement="Cliente_USV">
+      <bpmndi:BPMNShape id="c_start" bpmnElement="Cli_Start">
+        <dc:Bounds x="60"   y="260" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c_gps"   bpmnElement="Sub_GPS">
+        <dc:Bounds x="120"  y="230" width="180" height="90"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c_apf"   bpmnElement="Sub_APF">
+        <dc:Bounds x="330"  y="230" width="260" height="90"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c_sim"   bpmnElement="Sub_Sim">
+        <dc:Bounds x="620"  y="230" width="180" height="90"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c_gui"   bpmnElement="Gui_Task">
+        <dc:Bounds x="830"  y="250" width="200" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="c_end"   bpmnElement="Cli_End">
+        <dc:Bounds x="1060" y="260" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

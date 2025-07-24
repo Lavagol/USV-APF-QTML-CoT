@@ -1,174 +1,182 @@
 import numpy as np
-# Al inicio de recomendacion.py
-from ..models.parametros_obstaculos import PARAMS #allí están repulsion y radio por tipo (piedra, barco, boya).
+from ..models.parametros_obstaculos import PARAMS  # radio / repulsión por tipo
 
+# ───────────────────────────────────────────────────────────
+#  PARÁMETROS GLOBALES (solo valores por defecto)
+# ───────────────────────────────────────────────────────────
+Escala_sim = 1
+k_att      = 2.0
+k_rep_base = 500
+d0_base    = 30
 
+v_max_def  = 2.57                 # no la mocupo, porque cambiare el escape lateral
+k_tan      = 300.0
+d_pre      = 15.0
+angle_pre  = 8.0
+cos_pre    = np.cos(np.deg2rad(angle_pre))
 
+radio_alerta        = 150
+radio_recomendacion = 100
+# ───────────────────────────────────────────────────────────
 
 
 def calcular_recomendacion(
+        
     pos_usv,
     pos_objetivo,
     obstaculos,
     *,
-    # ───────────── Parámetros de fuerzas ─────────────
-    Escala_sim= 10,
-    k_att = 2.0,          # ganancia atractiva
-    k_rep_base = 500,         # ganancia repulsiva
-    d0_base    = 30,         # radio de influencia repulsiva
-    v_max = 2.5,          # velocidad máx. permitida    # ───────────── Parámetros ISS / escape ───────────
-    EPS_REL = 0.15,       # fracción de v_max para gatillar ISS
-    NU_ESC  = 2.0,        # radio en torno a la meta donde NO se impulsa
-    K_IMP   = 1.0,        # magnitud del impulso: K_IMP · v_max
-    umbral_escape_lateral = None,  # ← se fija internamente al 10 % de v_max
-    # ───────────── Otros ajustes ─────────────────────
-    historial           = None,    # lista de últimas posiciones
-    radio_alerta        = 150,      # solo avisa
-    radio_recomendacion = 100       # activa planificador local
+    v_max=v_max_def,      # ← el simulador puede pasar otro valor
+    historial=None
 ):
+    """
+    Planificador local con 5 etiquetas posibles:
+        avance_libre / avance_alerta / avance_APF /
+        avance_preventivo / escape_lateral
+    """
+    # ——— parámetros que dependen de la escala ———
+    k_rep_global = k_rep_base
+    d0_global    = d0_base * Escala_sim
+
+    # ——— umbrales que dependen de la V_max recibida ———
+    umbral_escape_local = 0.10 * v_max   #ojo debo borrar ersto
+ 
+    robot = np.array(pos_usv,      dtype=float)
+    goal  = np.array(pos_objetivo, dtype=float)
+
+    # ======================================================
+    # 1) Escaneo de obstáculos → decidir si activamos planner
+    # ======================================================
+    alerta, recomendar = None, False
+
+    # vamos a trackear la distancia mínima global
+    distancia_min = float("inf")
+    obst_min_id   = None
+    pos_min_iter  = None
     
-    k_rep = k_rep_base * Escala_sim**3   # ← ahora se calcula en cada llamada
-    d0    = d0_base    * Escala_sim
-    # -------------------------------------------------
-    # 0) Ajuste dinámico de parámetros dependientes
-    # -------------------------------------------------
-    if umbral_escape_lateral is None:
-        umbral_escape_lateral = 0.10 * v_max   # ← 10 % de v_max
+    for idx,(x_obs, y_obs, _) in enumerate(obstaculos):
+        d = np.linalg.norm(robot - (x_obs, y_obs))
+        # si esta es la mínima hasta ahora:
+        if d < distancia_min:
+            distancia_min  = d
+            obst_min_id    = idx
+            pos_min_iter   = tuple(robot)
+  
 
-    robot = np.array(pos_usv,  dtype=float)    # posición del USV
-    goal  = np.array(pos_objetivo, dtype=float) # posición objetivo
-
-    # -------------------------------------------------
-    # 1) Escaneo de obstáculos y radios
-    # -------------------------------------------------
-    alerta, recomendar   = None, False
-    distancia_minima     = float("inf")
-    # desempaquetamos (x, y, tipo). Si no vas a usar el tipo aquí,
-    # puedes capturarlo en “_” para indicar “lo ignoro”.
-    for x_obs, y_obs, _ in obstaculos:
-        #obs_arr = np.array(obs, dtype=float)
-        obs_arr = np.array((x_obs, y_obs), dtype=float)
-        dist    = np.linalg.norm(robot - obs_arr)
-        distancia_minima = min(distancia_minima, dist)
-
-        # Dentro del radio de alerta → solo avisar
-        if radio_recomendacion <= dist < radio_alerta:
-            vec_obs  = obs_arr - robot
-            vec_goal = goal    - robot
-            ang = ( np.degrees(np.arctan2(vec_obs[1],  vec_obs[0])) -
-                    np.degrees(np.arctan2(vec_goal[1], vec_goal[0])) ) % 360
+        if radio_recomendacion <= d < radio_alerta:
+            vec_obs  = np.array([x_obs, y_obs]) - robot
+            vec_goal = goal - robot
+            ang = (np.degrees(np.arctan2(vec_obs[1],  vec_obs[0])) -
+                   np.degrees(np.arctan2(vec_goal[1], vec_goal[0]))) % 360
             if   45 <= ang < 135:  sector = "izquierda"
             elif 135 <= ang < 225: sector = "trasera"
             elif 225 <= ang < 315: sector = "derecha"
             else:                  sector = "frontal"
-            alerta = f"⚠️ Obstáculo a {dist:.1f} m, sector {sector}"
+            alerta = f"⚠️ Obstáculo a {d:.1f} m, sector {sector}"
 
-        # Dentro del radio de recomendación → activar APF
-        if dist < radio_recomendacion:
+        if d < radio_recomendacion:
             recomendar = True
 
-    # -------------------------------------------------
-    # 2) MODO LIBRE / AVISO  (no se usa APF)
-    # -------------------------------------------------
+    # ======================================================
+    # 2) MODO LIBRE / ALERTA (no se usa APF)
+    # ======================================================
     if not recomendar:
-        direction = (goal - robot) / np.linalg.norm(goal - robot)
-        #rumbo     = np.degrees(np.arctan2(direction[1], direction[0])) % 360
-        rumbo_plano = np.degrees(np.arctan2(direction[1], direction[0])) % 360
-        rumbo = (rumbo_plano + 1.45) % 360
-        maniobra  = "avance_alerta" if alerta else "avance_libre"
+        dir_unit = (goal - robot) / np.linalg.norm(goal - robot)
+        rumbo    = (np.degrees(np.arctan2(dir_unit[1], dir_unit[0])))% 360
+        #rumbo    = (np.degrees(np.arctan2(dir_unit[1], dir_unit[0])) + 1.45) % 360 # transformacion del el vector unitario direction (la dirección hacia donde se moverá el USV) en un ángulo en grados
+        maniobra = "AVANCE ALERTA" if alerta else "AVANCE LIBRE"
         return {
             "rumbo"           : round(rumbo, 1),
             "velocidad"       : round(v_max, 2),
-            "distancia_minima": round(distancia_minima, 2),
-            "maniobra"        : maniobra,          # etiqueta modo
-            "impulso_ISS"     : False,             # no hay impulso
+            "distancia_minima": round(distancia_min, 2),
+            "maniobra"        : maniobra,
             "alerta"          : alerta,
             "force_total"     : np.array([0.0, 0.0]),
             "norm_F"          : 0.0
         }
 
-    # -------------------------------------------------
-    # 3) PLANIFICADOR LOCAL (APF)
-    # -------------------------------------------------
-    # 3-a) Calcular fuerzas
-    force_att = k_att * (goal - robot)            # fuerza atractiva 𝐅_atractiva = k_att · (objetivo − posición)
-    force_rep = np.zeros(2)                        # inicializamos vector repulsivo
-    #for obs in obstaculos:
-    #    vec  = robot - np.array(obs, dtype=float)
-    #    dist = np.linalg.norm(vec)
-    #    if dist <= d0:                            # dentro de radio repulsivo
-    #        dist = max(dist, 1e-3)                # evita división /0
-    #        rep  = k_rep * ((1/dist) - (1/d0)) / (dist**2)
-    #        force_rep += rep * (vec / dist)       # dirección + magnitud
+    # ======================================================
+    # 3) PLANIFICADOR LOCAL  (radio ≤ 100 m)
+    # ======================================================
+    # 3‑a) Atractiva
+    F_att = k_att * (goal - robot)
+
+    # 3‑b) Repulsiva por tipo
+    F_rep = np.zeros(2)
     for x_obs, y_obs, tipo in obstaculos:
-        # 1) vector USV → obstáculo
-        vec  = robot - np.array((x_obs, y_obs), dtype=float)
-        dist = np.linalg.norm(vec)          # distancia actual
+        vec = robot - np.array((x_obs, y_obs))
+        d   = np.linalg.norm(vec)
 
-        # 2) sacamos de PARAMS la influencia según el tipo:
-        #    • rho0: radio a partir del cual REPULSION=0
-        #    • eta : ganancia repulsiva
-        params = PARAMS.get(tipo, {})
-        d0_i   = params.get('radio', d0)     # si no está, usamos el d0 global
-        krep_i = params.get('repulsion',  k_rep)  # idem para k_rep
-        print(f"[DEBUG] tipo={tipo:<7} dist={dist:6.1f}  d0_i={d0_i:5.1f}  "
-          f"krep_i={krep_i:4}  dentro? {dist <= d0_i}")
-        # 3) si estamos dentro de ese radio de influencia...
-        if dist <= d0_i:
-            dist = max(dist, 1e-3)           # evitamos división por cero
-            # fórmula clásica de APF repulsiva:
-            #   rep = η · (1/dist − 1/d0) / dist²
-            rep  = krep_i * ((1/dist) - (1/d0_i)) / (dist**2)
-            # 4) sumamos componente repulsiva normalizada
-            force_rep += rep * (vec / dist)
+        d0_i   = PARAMS.get(tipo, {}).get('radio',     d0_global)
+        krep_i = PARAMS.get(tipo, {}).get('repulsion', k_rep_global)
 
-    force_total = force_att + force_rep           # ∇U completo
-    norm_F      = np.linalg.norm(force_total)
-    d_goal      = np.linalg.norm(goal - robot)
+        if 1e-6 < d <= d0_i:
+            F_rep += krep_i * ((1/d) - (1/d0_i)) / d**2 * (vec / d)
 
-    # 3-b) Detectar mínimo local (gradiente pequeño o poco avance)
-    activar_escape = (
-        (norm_F < EPS_REL * v_max and d_goal > NU_ESC) or
-        (historial is not None and len(historial) == 5 and
-         max( np.hypot(h[0] - historial[0][0],
-                       h[1] - historial[0][1]) for h in historial[1:] ) < 1.0)
-    )
+    # 3‑c) Tangente preventiva
+    F_tan = np.zeros(2)
+    if np.linalg.norm(F_att) > 1e-6:
+        hdir = F_att / np.linalg.norm(F_att)
+        for x_obs, y_obs, _ in obstaculos:
+            vec = robot - np.array((x_obs, y_obs))
+            d   = np.linalg.norm(vec)
+            if 1e-3 < d < d_pre:
+                u_r    = vec / d
+                cos_th = np.dot(hdir, -u_r)
+                if cos_th > cos_pre:
+                    gamma = (cos_th - cos_pre) / (1 - cos_pre)
+                    beta  = (d_pre - d) / d_pre
+                    k_eff = k_tan * beta * gamma
+                    u_t   = np.array([-u_r[1], u_r[0]])
+                    if np.dot(u_t, goal - robot) < 0:
+                        u_t = -u_t
+                    F_tan = k_eff * u_t
+                    break
 
-    # 3-c) Seleccionar maniobra
-    if activar_escape:
-        # Impulso ISS (perpendicular a ∇U)
-        ortho = np.array([-force_total[1], force_total[0]])
-        if np.linalg.norm(ortho) < 1e-6:          # caso degenerado
-            ortho = np.array([1.0, 0.0])
-        direction = ortho / np.linalg.norm(ortho)
-        velocidad = K_IMP * v_max
-        maniobra  = "impulso_ISS"
+    # 3‑d) Gradiente total
+    F_tot  = F_att + F_rep + F_tan
+    norm_F = np.linalg.norm(F_tot)
 
-    elif norm_F < umbral_escape_lateral:
-        # Escape lateral clásico (tangente)
-        tangent   = np.array([-force_total[1], force_total[0]])
+   
+
+    # 3‑e) Maniobra
+    if norm_F < umbral_escape_local:             # ── MODO 4
+        tangent   = np.array([-F_tot[1], F_tot[0]])
         direction = tangent / np.linalg.norm(tangent)
-        velocidad = v_max
-        maniobra  = "escape_lateral"
+        maniobra  = "ESCAPE LATERAL"
 
-    else:
-        # Avance normal por gradiente
-        direction = force_total / norm_F
-        velocidad = min(v_max, norm_F)            # limita a v_max
-        maniobra  = "avance_APF"
+    elif np.any(F_tan):                          # ── MODO 3
+        direction = F_tot / norm_F
+        maniobra  = "AVANCE PREVENTIVO"
+
+    else:                                        # ── MODO 2
+        direction = F_tot / norm_F
+        maniobra  = "AVANCE APF"
+
+    # ─────────────────────────────────────────────────────────────
+    # 3‑f) BLOQUE DE INERCIA  (opcional: alpha = 0 ⇢ sin inercia)
+    # -----------------------------------------------------------------
+    alpha = 0.30                      # <‑‑ ajusta o pásalo como parámetro
+
+    prev = getattr(calcular_recomendacion, "_dir_prev", None)
+    if prev is not None and alpha > 0 and np.linalg.norm(prev) > 1e-6:
+        direction = (1 - alpha) * direction + alpha * prev
+        direction /= np.linalg.norm(direction)
+
+    # Guarda para la siguiente llamada
+    calcular_recomendacion._dir_prev = direction
+    # ─────────────────────────────────────────────────────────────
 
     rumbo = np.degrees(np.arctan2(direction[1], direction[0])) % 360
-
-    # -------------------------------------------------
-    # 4) Devuelve diccionario con la recomendación
-    # -------------------------------------------------
+    distancia_min_m = distancia_min * Escala_sim
     return {
         "rumbo"           : round(rumbo, 1),
-        "velocidad"       : round(velocidad, 2),
-        "distancia_minima": round(distancia_minima, 2),
+        "velocidad"       : round(v_max, 2),  # Por defecto, se devuelve la misma velocidad que recibió.
         "maniobra"        : maniobra,
-        "impulso_ISS"     : activar_escape,
         "alerta"          : alerta,
-        "force_total"     : force_total,
-        "norm_F"          : norm_F
-    }
+        "force_total"     : F_tot,
+        "norm_F"          : norm_F,
+        "distancia_minima": round(distancia_min_m, 2),
+        "pos_min_iter"    : pos_min_iter,
+        "obst_min_id"     : obst_min_id,
+}  

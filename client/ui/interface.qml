@@ -93,6 +93,7 @@ ApplicationWindow {
                 font.pixelSize: 20
                 color: "orange"
             }
+       
         }
     }
 
@@ -128,3 +129,8 @@ ApplicationWindow {
         }
     }
 }
+
+
+
+
+

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Defs_handler_socket"
+                  targetNamespace="http://example.com/bpmn">
+
+  <!-- ============================================================== -->
+  <!--        SUB-PROCESO  handle_client()  –  Hilo por cliente       -->
+  <!-- ============================================================== -->
+  <bpmn:process id="handler_socket"
+                name="handler socket"
+                isExecutable="false">
+
+    <!-- NODOS ------------------------------------------------------- -->
+    <bpmn:startEvent id="Thr_Start" name="Cliente conectado"/>
+
+    <bpmn:task id="Thr_SendCR" name="Enviar CR + primer COT"/>
+
+    <bpmn:exclusiveGateway id="Thr_Gw" name="¿Comando?"/>
+
+    <bpmn:task id="Thr_GetCOT"  name="Responder GET_COT"/>
+    <bpmn:task id="Thr_Engine"  name="Responder ENGINE…"/>
+
+    <bpmn:intermediateThrowEvent id="Thr_Error" name="Socket cerrado">
+      <bpmn:errorEventDefinition/>
+    </bpmn:intermediateThrowEvent>
+
+    <bpmn:endEvent id="Thr_End" name="Fin hilo cliente"/>
+
+    <!-- FLUJOS ------------------------------------------------------ -->
+    <bpmn:sequenceFlow id="t1" sourceRef="Thr_Start"   targetRef="Thr_SendCR"/>
+    <bpmn:sequenceFlow id="t2" sourceRef="Thr_SendCR"  targetRef="Thr_Gw"/>
+
+    <!-- Rama GET_COT (default) -->
+    <bpmn:sequenceFlow id="t3" sourceRef="Thr_Gw" targetRef="Thr_GetCOT" isDefault="true"/>
+    <bpmn:sequenceFlow id="t4" sourceRef="Thr_GetCOT" targetRef="Thr_Gw"/>
+
+    <!-- Rama ENGINE -->
+    <bpmn:sequenceFlow id="t5" sourceRef="Thr_Gw" targetRef="Thr_Engine">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[
+        starts-with(comando,"ENGINE")
+      ]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="t6" sourceRef="Thr_Engine" targetRef="Thr_Gw"/>
+
+    <!-- Salida por error / desconexión -->
+    <bpmn:sequenceFlow id="t7" sourceRef="Thr_Gw" targetRef="Thr_Error">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression"><![CDATA[
+        comando = ""
+      ]]></bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="t8" sourceRef="Thr_Error" targetRef="Thr_End"/>
+
+  </bpmn:process>
+
+  <!-- DIAGRAM INTERCHANGE mínimo: Bizagi colocará las figuras -->
+  <bpmndi:BPMNDiagram id="Diag_handler_socket">
+    <bpmndi:BPMNPlane id="Plane_handler_socket" bpmnElement="handler_socket"/>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

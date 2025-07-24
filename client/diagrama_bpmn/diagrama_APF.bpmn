@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Defs_APF_Evadir"
+                  targetNamespace="http://example.com/bpmn">
+
+  <bpmn:process id="APF_Evadir" name="APF – evadir colisiones" isExecutable="false">
+
+    <!-- NODOS -->
+    <bpmn:startEvent id="Start" name="XY + Obstáculos"/>
+    <bpmn:task id="T_Fatt" name="Fatracción&#10;(k_att)"/>
+
+    <!-- OR obstáculos -->
+    <bpmn:inclusiveGateway id="G_OR_open"/>
+    <bpmn:task id="F_BOYA"   name="Frep(BOYA)"/>
+    <bpmn:task id="F_BARCO"  name="Frep(BARCO)"/>
+    <bpmn:task id="F_PIEDRA" name="Frep(PIEDRA)"/>
+    <bpmn:task id="F_DEF"    name="DEFAULT"/>
+    <bpmn:inclusiveGateway id="G_OR_close"/>
+
+    <bpmn:task id="T_SumaF" name="Σ Fuerzas + limit&#10;v_max"/>
+
+    <!-- XOR maniobra -->
+    <bpmn:exclusiveGateway id="G_XOR" name="¿Maniobra?"/>
+    <bpmn:task id="T_Avance" name="AVANCE APF"/>
+    <bpmn:task id="T_Escape" name="ESCAPE"/>
+    <bpmn:task id="T_ISS"    name="ISS"/>
+    <bpmn:task id="T_Publicar" name="Publicar rumbo&#10;y velocidad"/>
+    <bpmn:endEvent id="End"  name="◎"/>
+
+    <!-- FLUJOS -->
+    <bpmn:sequenceFlow id="s1" sourceRef="Start" targetRef="T_Fatt"/>
+    <bpmn:sequenceFlow id="s2" sourceRef="T_Fatt" targetRef="G_OR_open"/>
+
+    <!-- OR ramas -->
+    <bpmn:sequenceFlow id="s3" sourceRef="G_OR_open" targetRef="F_BOYA"/>
+    <bpmn:sequenceFlow id="s4" sourceRef="G_OR_open" targetRef="F_BARCO"/>
+    <bpmn:sequenceFlow id="s5" sourceRef="G_OR_open" targetRef="F_PIEDRA"/>
+    <bpmn:sequenceFlow id="s6" sourceRef="G_OR_open" targetRef="F_DEF" isDefault="true"/>
+
+    <bpmn:sequenceFlow id="s7" sourceRef="F_BOYA"   targetRef="G_OR_close"/>
+    <bpmn:sequenceFlow id="s8" sourceRef="F_BARCO"  targetRef="G_OR_close"/>
+    <bpmn:sequenceFlow id="s9" sourceRef="F_PIEDRA" targetRef="G_OR_close"/>
+    <bpmn:sequenceFlow id="s10" sourceRef="F_DEF"    targetRef="G_OR_close"/>
+
+    <bpmn:sequenceFlow id="s11" sourceRef="G_OR_close" targetRef="T_SumaF"/>
+    <bpmn:sequenceFlow id="s12" sourceRef="T_SumaF"    targetRef="G_XOR"/>
+
+    <!-- XOR ramas -->
+    <bpmn:sequenceFlow id="s13" sourceRef="G_XOR" targetRef="T_Avance" isDefault="true"/>
+    <bpmn:sequenceFlow id="s14" sourceRef="G_XOR" targetRef="T_Escape"/>
+    <bpmn:sequenceFlow id="s15" sourceRef="G_XOR" targetRef="T_ISS"/>
+
+    <bpmn:sequenceFlow id="s16" sourceRef="T_Avance" targetRef="T_Publicar"/>
+    <bpmn:sequenceFlow id="s17" sourceRef="T_Escape" targetRef="T_Publicar"/>
+    <bpmn:sequenceFlow id="s18" sourceRef="T_ISS"    targetRef="T_Publicar"/>
+
+    <bpmn:sequenceFlow id="s19" sourceRef="T_Publicar" targetRef="End"/>
+
+  </bpmn:process>
+
+  <!--  DI con posiciones sencillas -->
+  <bpmndi:BPMNDiagram id="Diag_APF">
+    <bpmndi:BPMNPlane id="Plane_APF" bpmnElement="APF_Evadir">
+      <bpmndi:BPMNShape id="sh_start"  bpmnElement="Start"><dc:Bounds x="80" y="140" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_fatt"   bpmnElement="T_Fatt"><dc:Bounds x="150" y="120" width="120" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_gopen"  bpmnElement="G_OR_open"><dc:Bounds x="300" y="135" width="50" height="50"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="sh_boya"   bpmnElement="F_BOYA"><dc:Bounds x="380" y="40"  width="120" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_barco"  bpmnElement="F_BARCO"><dc:Bounds x="380" y="120" width="120" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_piedra" bpmnElement="F_PIEDRA"><dc:Bounds x="380" y="200" width="120" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_def"    bpmnElement="F_DEF"><dc:Bounds x="380" y="280" width="120" height="60"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="sh_gclose" bpmnElement="G_OR_close"><dc:Bounds x="530" y="135" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_sum"    bpmnElement="T_SumaF"><dc:Bounds x="610" y="120" width="150" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_xor"    bpmnElement="G_XOR"><dc:Bounds x="790" y="135" width="50" height="50"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="sh_av"  bpmnElement="T_Avance"><dc:Bounds x="870" y="40"  width="110" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_esc" bpmnElement="T_Escape"><dc:Bounds x="870" y="120" width="110" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_iss" bpmnElement="T_ISS"><dc:Bounds x="870" y="200" width="110" height="60"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="sh_pub" bpmnElement="T_Publicar"><dc:Bounds x="1020" y="120" width="140" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_end" bpmnElement="End"><dc:Bounds x="1180" y="140" width="36" height="36"/></bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

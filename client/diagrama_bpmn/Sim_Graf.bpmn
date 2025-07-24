@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Defs_SimGraf"
+                  targetNamespace="http://example.com/bpmn">
+
+  <bpmn:process id="Sim_Graf" name="Simulador → Graficador" isExecutable="false">
+
+    <bpmn:startEvent id="S0" name="Recomendación APF"/>
+    <bpmn:task id="T_Sim" name="simulador.py&#10;Integrar movimiento"/>
+    <bpmn:task id="T_Save" name="Guardar archivos&#10;trayectoria.npy, obstaculos.npy, log.csv"/>
+    <bpmn:task id="T_Graf" name="graficador.py&#10;Graficar trayectoria"/>
+    <bpmn:endEvent id="End" name="Fin Cliente"/>
+
+    <bpmn:sequenceFlow id="fl1" sourceRef="S0"     targetRef="T_Sim"/>
+    <bpmn:sequenceFlow id="fl2" sourceRef="T_Sim"  targetRef="T_Save"/>
+    <bpmn:sequenceFlow id="fl3" sourceRef="T_Save" targetRef="T_Graf"/>
+    <bpmn:sequenceFlow id="fl4" sourceRef="T_Graf" targetRef="End"/>
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="Diag_SG">
+    <bpmndi:BPMNPlane id="Plane_SG" bpmnElement="Sim_Graf">
+      <bpmndi:BPMNShape id="sh_s0"  bpmnElement="S0"  ><dc:Bounds x="80"  y="120" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_sim" bpmnElement="T_Sim"><dc:Bounds x="150" y="100" width="160" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_save" bpmnElement="T_Save"><dc:Bounds x="340" y="100" width="220" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_graf" bpmnElement="T_Graf"><dc:Bounds x="590" y="100" width="170" height="60"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sh_end" bpmnElement="End"><dc:Bounds x="790" y="120" width="36" height="36"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="ed1" bpmnElement="fl1"><di:waypoint x="116" y="138"/><di:waypoint x="150" y="130"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ed2" bpmnElement="fl2"><di:waypoint x="310" y="130"/><di:waypoint x="340" y="130"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ed3" bpmnElement="fl3"><di:waypoint x="560" y="130"/><di:waypoint x="590" y="130"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ed4" bpmnElement="fl4"><di:waypoint x="760" y="130"/><di:waypoint x="790" y="138"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

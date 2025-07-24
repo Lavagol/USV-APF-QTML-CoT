@@ -11,11 +11,11 @@ import sys
 # ───────── Modelo que expone el texto al QML ─────────
 class ModeloEstado(QObject):
     estadoTextoChanged = Signal()
-
+    tiempoTextoChanged =Signal()
     def __init__(self):
         super().__init__()
         self._estado = "Sin alertas"
-
+        self._tiempo= "0.0 s" #valor inicial
     def getEstado(self):
         return self._estado
 
@@ -26,6 +26,15 @@ class ModeloEstado(QObject):
 
     estadoTexto = Property(str, getEstado, setEstado, notify=estadoTextoChanged)
 
+    def getTiempo(self):
+        return self._tiempo
+    
+    def setTiempo(self, valor):
+        if self._tiempo != valor:
+            self._tiempo = valor
+            self.tiempoTextoChanged.emit()
+
+    tiempoTexto = Property (str,getTiempo,setTiempo, notify=tiempoTextoChanged)
 
 # ───────────────────── MAIN ──────────────────────────
 if __name__ == "__main__":
@@ -60,7 +69,11 @@ if __name__ == "__main__":
 
     # conectar alertas del simulador a QML
     simulador.alertaActualizada.connect(modelo.setEstado)
-      
+    #para mostrar el Qtimer
+    simulador.tiempoActualizado.connect(
+    lambda s: modelo.setTiempo(f"{s:,.1f} s")  
+
+)
     # (Opcionales, para debug en consola:)
     socket_thread.rumboGeodesico.connect(
         lambda r: print(f"[GEO] Rumbo geodésico → {r:.1f}°")
